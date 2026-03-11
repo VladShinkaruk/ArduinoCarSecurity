@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="grad_start">#5B4BFF</color>
+    <color name="grad_end">#7A6CFF</color>
+    <color name="card_bg">#FFFFFF</color>
+    <color name="btn_on">#2ECC71</color>
+    <color name="btn_off">#FF4B5C</color>
+    <color name="online">#2ECC71</color>
+    <color name="offline">#E74C3C</color>
+</resources>
