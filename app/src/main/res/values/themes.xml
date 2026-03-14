@@ -1,5 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Base.Theme.ArduinoCarSecurity" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">@font/exo_family</item>
+        <item name="fontFamily">@font/exo_family</item>
     </style>
     <style name="Theme.ArduinoCarSecurity" parent="Base.Theme.ArduinoCarSecurity" />
 </resources>

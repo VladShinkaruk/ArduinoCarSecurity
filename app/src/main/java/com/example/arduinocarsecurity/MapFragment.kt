@@ -25,7 +25,7 @@ class MapFragment : Fragment() {
     private lateinit var tvLocation: TextView
     private lateinit var tvTimestamp: TextView
     private lateinit var tvStatus: TextView
-    private lateinit var btnCenter: FloatingActionButton
+    private lateinit var btnRefresh: FloatingActionButton
     private val prefsName = "car_security"
     private val deviceUrl =
         "http://fedrum.atwebpages.com/device_status.txt"
@@ -46,12 +46,10 @@ class MapFragment : Fragment() {
         tvLocation = view.findViewById(R.id.tv_location)
         tvTimestamp = view.findViewById(R.id.tv_timestamp)
         tvStatus = view.findViewById(R.id.tv_status)
-        btnCenter = view.findViewById(R.id.btn_center)
+        btnRefresh = view.findViewById(R.id.btn_refresh)
         moveToDefaultLocation()
-        btnCenter.setOnClickListener {
-            lastPoint?.let {
-                mapView.map.move(CameraPosition(it, 17f, 0f, 0f))
-            }
+        btnRefresh.setOnClickListener {
+            loadBestLocation()
         }
         loadBestLocation()
     }
@@ -220,7 +218,7 @@ class MapFragment : Fragment() {
     }
 
     private fun moveToDefaultLocation() {
-        val defaultPoint = Point(53.9, 27.56) // Минск (можно поменять)
+        val defaultPoint = Point(53.9, 27.56)
         mapView.map.move(
             CameraPosition(defaultPoint, 5f, 0f, 0f),
             Animation(Animation.Type.SMOOTH, 1f),

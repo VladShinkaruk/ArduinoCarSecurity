@@ -30,8 +30,23 @@ class HistoryViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         }
         tvType.text = title
         tvType.setTextColor(color)
-        tvMessage.text = item.message
+        tvMessage.text = translateMessage(item.message)
         val sdf = SimpleDateFormat("dd.MM HH:mm:ss", Locale.getDefault())
         tvTime.text = sdf.format(Date(item.time))
+    }
+
+    private fun translateMessage(message: String): String {
+        var text = message.uppercase()
+
+        if (text.contains("MIC") && text.contains("GYRO")) {
+            return message.replace(Regex("MIC\\s*\\+?\\s*GYRO|GYRO\\s*\\+?\\s*MIC"), "Микрофон + Гироскоп")
+        }
+        if (text.contains("MIC")) {
+            return message.replace("MIC", "Микрофон")
+        }
+        if (text.contains("GYRO")) {
+            return message.replace("GYRO", "Гироскоп")
+        }
+        return message
     }
 }

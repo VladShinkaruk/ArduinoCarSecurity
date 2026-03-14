@@ -5,8 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -14,16 +12,13 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
     private lateinit var bottomNav: BottomNavigationView
-    private var currentTab = R.id.nav_control
-    private var navLocked = true
-    private var lastClickTime = 0L
-    private val unlockHandler = Handler(Looper.getMainLooper())
-    private val unlockRunnable = Runnable { navLocked = false }
-
+    private val controlFragment = ControlFragment()
+    private val mapFragment = MapFragment()
+    private val historyFragment = HistoryFragment()
+    private var activeFragment: Fragment? = null
     private val smsUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val fragment = supportFragmentManager
-                .findFragmentById(R.id.fragment_container)
+            val fragment = activeFragment
             if (fragment is ControlFragment) {
                 fragment.reloadFromStorage()
             }
@@ -34,30 +29,46 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         bottomNav = findViewById(R.id.bottom_nav)
-        loadFragment(ControlFragment())
 
-        navLocked = true
-        unlockHandler.postDelayed(unlockRunnable, 4000)
-        bottomNav.setOnItemSelectedListener { item ->
-            val now = System.currentTimeMillis()
-            if (navLocked) {
-                return@setOnItemSelectedListener false
-            }
-            if (now - lastClickTime < 600) {
-                return@setOnItemSelectedListener false
-            }
-            if (item.itemId == currentTab) {
-                return@setOnItemSelectedListener false
-            }
-            lastClickTime = now
-            currentTab = item.itemId
-            when (item.itemId) {
-                R.id.nav_control -> loadFragment(ControlFragment())
-                R.id.nav_map -> loadFragment(MapFragment())
-                R.id.nav_history -> loadFragment(HistoryFragment())
-            }
-            true
+        if (savedInstanceState == null) {
+            supportFragmentManager.beginTransaction()
+                .add(R.id.fragment_container, historyFragment, "history")
+                .hide(historyFragment)
+                .commit()
+            supportFragmentManager.beginTransaction()
+                .add(R.id.fragment_container, mapFragment, "map")
+                .hide(mapFragment)
+                .commit()
+            supportFragmentManager.beginTransaction()
+                .add(R.id.fragment_container, controlFragment, "control")
+                .commit()
+
+            activeFragment = controlFragment
         }
+
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_control -> switchFragment(controlFragment)
+                R.id.nav_map -> switchFragment(mapFragment)
+                R.id.nav_history -> switchFragment(historyFragment)
+                else -> false
+            }
+        }
+    }
+
+    private fun switchFragment(target: Fragment): Boolean {
+        if (activeFragment == target) return false
+        supportFragmentManager.beginTransaction()
+            .setReorderingAllowed(true)
+            .setCustomAnimations(
+                R.anim.fragment_fade_in,
+                0
+            )
+            .hide(activeFragment!!)
+            .show(target)
+            .commitAllowingStateLoss()
+        activeFragment = target
+        return true
     }
 
     override fun onResume() {
@@ -73,20 +84,5 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         unregisterReceiver(smsUpdateReceiver)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        unlockHandler.removeCallbacks(unlockRunnable)
-    }
-
-    private fun loadFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .setCustomAnimations(
-                android.R.anim.fade_in,
-                android.R.anim.fade_out
-            )
-            .replace(R.id.fragment_container, fragment)
-            .commit()
     }
 }

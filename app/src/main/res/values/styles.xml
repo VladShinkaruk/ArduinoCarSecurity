@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="NavText" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="NavText">
+        <item name="android:fontFamily">@font/exo_family</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="TextBody">
+        <item name="android:fontFamily">@font/exo_family</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="TextSmall">
+        <item name="android:fontFamily">@font/exo_family</item>
         <item name="android:textSize">12sp</item>
     </style>
 </resources>

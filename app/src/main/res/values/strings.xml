@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Охрана Транспорта</string>
     <string name="map_content_description">Карта с местоположением последней тревоги</string>
-    <string name="center_map">Центрировать карту на машине</string>
+    <string name="logo_description">Логотип приложения</string>
 </resources>

@@ -325,10 +325,14 @@ class ControlFragment : Fragment() {
     private fun sendSms(cmd: String) {
         if (!checkPermission()) return
         try {
+            val smsText = when (cmd) {
+                "ON", "OFF" -> "$cmd 0809"
+                else -> cmd
+            }
             SmsManager.getDefault().sendTextMessage(
                 SmsReceiver.DEVICE_NUMBER,
                 null,
-                cmd,
+                smsText,
                 null,
                 null
             )
@@ -339,7 +343,6 @@ class ControlFragment : Fragment() {
                 "SMS отправлено: $cmd"
             )
         } catch (e: Exception) {
-
             toast("Ошибка SMS")
             HistoryManager.addEvent(
                 requireContext(),
@@ -400,11 +403,12 @@ class ControlFragment : Fragment() {
             val prefs = requireContext()
                 .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             val savedTime = prefs.getString(PREF_LAST_STATUS_TIME, null)
+
             if (statusTime != savedTime) {
                 HistoryManager.addEvent(
                     requireContext(),
                     "RESPONSE_SMS",
-                    parseDeviceStatus(text)
+                    parseDeviceStatus(text).toString()
                 )
                 prefs.edit()
                     .putString(PREF_LAST_STATUS_TIME, statusTime)
@@ -412,10 +416,12 @@ class ControlFragment : Fragment() {
             }
         }
         val parsed = parseDeviceStatus(text)
+
         tvSmsStatus.text = parsed
         tvSmsStatus.visibility = View.VISIBLE
         expanded = true
         btnExpand.text = "▲ Детали"
+
         saveState(text)
         if (text.contains("System: ON"))
             updateSystem(true, true)
@@ -432,7 +438,7 @@ class ControlFragment : Fragment() {
                 btnExpand.text = "▲ Скрыть"
             } else {
                 tvSmsStatus.visibility = View.GONE
-                btnExpand.text = "▼ Детали SMS"
+                btnExpand.text = "▼ Детали"
 
             }
             saveExpanded()
@@ -442,11 +448,11 @@ class ControlFragment : Fragment() {
     private fun setupRefresh() {
         swipe.setOnRefreshListener {
             checkHttpStatus(true)
+            loadHttpStatus()
             handler.postDelayed({
                 if (isAdded)
                     swipe.isRefreshing = false
-
-            }, 600)
+            }, 800)
         }
     }
 
@@ -486,6 +492,7 @@ class ControlFragment : Fragment() {
         if (time > 0)
             tvLastUpdate.text = "Последний статус: ${formatTime(time)}"
     }
+
     private fun checkPermission(): Boolean {
         if (ContextCompat.checkSelfPermission(
                 requireContext(),
@@ -569,32 +576,67 @@ class ControlFragment : Fragment() {
             tvLastUpdate.text = "Последнее: ${formatTime(time)}"
     }
 
-    private fun parseDeviceStatus(raw: String): String {
+    private fun parseDeviceStatus(raw: String): CharSequence {
         try {
             val parts = raw.trim().split("|")
             if (parts.size < 7) return raw
-            val system =
-                if (parts[0] == "1") "🔐 ВКЛЮЧЕНА"
-                else "🔓 ВЫКЛЮЧЕНА"
-            val alarm =
-                if (parts[1] == "1") "🚨 ТРЕВОГА"
-                else "✔ Нет"
-            val mic =
-                if (parts[2] == "0")
-                    "🔇 Тишина"
-                else
-                    "🔊 Шум"
+            val system = parts[0] == "1"
+            val alarm = parts[1] == "1"
+            val mic = parts[2] != "0"
             val gyro = parts[3]
             val gps = parts[5]
             val time = parts[6]
-            return """
-🔐 Система: $system
-🚨 Тревога: $alarm
-🎤 Микрофон: $mic
-🧭 Гироскоп: $gyro
-📍 GPS: $gps
-⏱ Последнее обновление: $time
-        """.trimIndent()
+            val builder = android.text.SpannableStringBuilder()
+
+            fun addRow(title: String, value: String, color: Int) {
+                val start = builder.length
+                builder.append(title)
+                builder.setSpan(
+                    android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                    start,
+                    start + title.length,
+                    0
+                )
+                builder.append("  ")
+
+                val valueStart = builder.length
+                builder.append(value)
+                builder.setSpan(
+                    android.text.style.ForegroundColorSpan(color),
+                    valueStart,
+                    valueStart + value.length,
+                    0
+                )
+                builder.append("\n\n")
+            }
+            addRow(
+                "🔐 Система",
+                if (system) "ВКЛЮЧЕНА" else "ВЫКЛЮЧЕНА",
+                if (system) Color.parseColor("#2ECC71") else Color.parseColor("#E74C3C")
+            )
+            addRow(
+                "🚨 Тревога",
+                if (alarm) "АКТИВНА" else "НЕТ",
+                if (alarm) Color.parseColor("#E74C3C") else Color.parseColor("#2ECC71")
+            )
+            addRow(
+                "🎤 Микрофон",
+                if (mic) "ШУМ" else "ТИШИНА",
+                if (mic) Color.parseColor("#F39C12") else Color.parseColor("#2ECC71")
+            )
+            addRow(
+                "🧭 Гироскоп",
+                gyro,
+                Color.parseColor("#3498DB")
+            )
+            addRow(
+                "📍 GPS",
+                gps,
+                Color.parseColor("#3498DB")
+            )
+            builder.append("⏱ Обновлено\n")
+            builder.append(time)
+            return builder
         } catch (e: Exception) {
             return raw
         }
@@ -618,7 +660,8 @@ class ControlFragment : Fragment() {
                     return@StringRequest
                 }
                 val time = parts[0]
-                val sensor = parts[2]
+                val sensorRaw = parts[2]
+                val sensor = translateSensor(sensorRaw)
                 val coords = parts[3]
                 val prefs = requireContext()
                     .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -626,7 +669,7 @@ class ControlFragment : Fragment() {
                 if (time != lastSaved) {
                     HistoryManager.logAlarm(
                         requireContext(),
-                        "Сработал сенсор $sensor ($coords)"
+                        "🚨 Тревога: $sensor ($coords)"
                     )
                     prefs.edit()
                         .putString(PREF_LAST_ALARM, time)
@@ -652,7 +695,7 @@ class ControlFragment : Fragment() {
                 val tvSensor = dialogView.findViewById<TextView>(R.id.tv_alarm_sensor)
                 val tvCoords = dialogView.findViewById<TextView>(R.id.tv_alarm_coords)
                 tvTime.text = "🕒 $time"
-                tvSensor.text = "🎤 Сенсор: $sensor"
+                tvSensor.text = "🚨 Сработал: $sensor"
                 tvCoords.text = "📍 $coords"
                 val point = com.yandex.mapkit.geometry.Point(lat, lon)
                 mapView.map.move(
@@ -674,5 +717,20 @@ class ControlFragment : Fragment() {
             }
         )
         queue.add(req)
+    }
+
+    private fun translateSensor(sensor: String): String {
+        val s = sensor.trim().uppercase()
+
+        return when {
+            s.contains("MIC") && s.contains("GYRO") ->
+                "Микрофон + Гироскоп"
+            s.contains("MIC") ->
+                "Микрофон"
+            s.contains("GYRO") ->
+                "Гироскоп"
+            else ->
+                sensor
+        }
     }
 }
