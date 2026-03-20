@@ -19,7 +19,7 @@ void setup() {
   
   pinMode(pinCLK, INPUT_PULLUP);
   pinMode(pinDT, INPUT_PULLUP);
-  pinMode(pinSW, INPUT_PULLUP)
+  pinMode(pinSW, INPUT_PULLUP);
   
   lastCLKState = digitalRead(pinCLK);
   lastDTState = lastCLKState;
